@@ -60,6 +60,11 @@ fn main() {
         "{:?}",
         parse("IMACXmyext", vec![&I, &M, &A, &C, &X::default()])
     );
+
+    println!(
+        "{:?}",
+        parse("Xmyext_CMAI", vec![&I, &M, &A, &C, &X::default()])
+    );
 }
 
 #[derive(Debug)]
@@ -112,8 +117,14 @@ pub fn parse_one<'str>(
         }
         ExtensionShape::Prefix(_) => {
             let id = shape.identifier();
-            nom::sequence::pair(tag(id), nom::bytes::complete::take_till1(|c| c == '_'))(input)
-                .map(|(rest, (id, tail))| (rest, vec![Extension(format!("{}{}", id, tail))]))
+            nom::sequence::pair(
+                tag(id),
+                nom::sequence::terminated(
+                    nom::bytes::complete::take_till1(|c| c == '_'),
+                    nom::multi::many_m_n(0, 1, nom::bytes::complete::tag("_")),
+                ),
+            )(input)
+            .map(|(rest, (id, tail))| (rest, vec![Extension(format!("{}{}", id, tail))]))
         }
         ExtensionShape::Multi(_) => {
             let id = shape.identifier();
