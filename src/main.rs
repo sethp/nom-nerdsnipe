@@ -140,18 +140,23 @@ pub fn parse<'str>(
     let mut res = vec![];
     let mut remaining = input;
     while !remaining.is_empty() {
-        let parsed;
-        (remaining, parsed) = extensions
+        let (idx, parsed);
+        (idx, (remaining, parsed)) = extensions
             .as_slice()
             .iter()
-            .find_map(|&ext| parse_one(remaining, ext).ok())
+            .enumerate()
+            .find_map(|(idx, &ext)| parse_one(remaining, ext).ok().map(|r| (idx, r)))
             .ok_or(nom::Err::Failure(nom::error::Error {
                 input: remaining,
                 code: nom::error::ErrorKind::OneOf, // or something?
             }))?;
 
-        res.extend(parsed);
+        res.push((idx, parsed));
     }
 
-    Ok(("", res))
+    res.sort_by_key(|&(idx, _)| idx);
+
+    // TODO: flat_map seems wrongish; do all multi extensions generate "in order" (i.e. do they expand, at their position, to exactly the order that should be in the final string)? do we care about duplicates?
+
+    Ok(("", res.into_iter().flat_map(|(_, e)| e).collect()))
 }
